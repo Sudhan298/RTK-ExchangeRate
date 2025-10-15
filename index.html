@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Today's Exchange Rate</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f9fafb;
+      color: #222;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    header {
+      width: 100%;
+      background: white;
+      padding: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    header img {
+      height: 60px;
+      object-fit: contain;
+    }
+
+    h1 {
+      margin-top: 10px;
+      font-size: 1.6em;
+      color: #333;
+    }
+
+    main {
+      flex: 1;
+      width: 90%;
+      max-width: 800px;
+      margin-top: 20px;
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      padding: 12px 8px;
+      text-align: center;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background: #f1f3f4;
+      font-weight: bold;
+    }
+
+    tr:hover {
+      background: #f9f9f9;
+    }
+
+    footer {
+      text-align: center;
+      padding: 10px;
+      color: #666;
+      font-size: 13px;
+    }
+
+    .error {
+      color: red;
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><img src="assets/logo.png" alt="Royal Tulip Kathmandu"></h1>
+    <h1>Today's Exchange Rate</h1>
+  </header>
+
+  <main>
+    <table id="ratesTable">
+      <thead>
+        <tr>
+          <th>Currency</th>
+          <th>Unit</th>
+          <th>Rate (NPR)</th>
+        </tr>
+      </thead>
+      <tbody id="rateBody">
+        <tr><td colspan="3" style="text-align:center;">Loading rates...</td></tr>
+      </tbody>
+    </table>
+    <p id="errorMsg" class="error"></p>
+  </main>
+
+  <footer>
+    Updated in real-time from NRB
+  </footer>
+
+  <script>
+    const API_URL = "https://nrb-rtk.sujan-dahal.workers.dev/nrb-rates";
+
+    async function fetchRates() {
+      try {
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error("Failed to fetch rates");
+        const data = await res.json();
+
+        const rateBody = document.getElementById("rateBody");
+        rateBody.innerHTML = "";
+
+        const rates = data?.data?.payload?.[0]?.rates || [];
+
+        rates.forEach(item => {
+          const name = item.currency.name;
+          const code = item.currency.iso3;
+          const unit = item.currency.unit;
+          let buy = parseFloat(item.buy);
+
+          if (code !== "INR") {
+            buy = buy * 0.98;
+          }
+
+          // Map ISO3 to 2-letter country code for flag
+          const countryCode = getCountryCode(code);
+
+          // Build flag URL
+          const flagUrl = countryCode
+            ? `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`
+            : "";
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td style="text-align:left;">
+              ${flagUrl ? `<img src="${flagUrl}" alt="${code} flag" style="width:24px; height:16px; margin-right:8px; vertical-align:middle; border-radius:3px;">` : ""}
+              ${name} (${code})
+            </td>
+            <td>${unit}</td>
+            <td>${buy.toFixed(2)}</td>
+          `;
+          rateBody.appendChild(row);
+        });
+      } catch (err) {
+        document.getElementById("errorMsg").textContent =
+          "⚠️ Could not load rates. Please check internet connection.";
+      }
+    }
+
+    function getCountryCode(currencyCode) {
+      const map = {
+        USD: "us",
+        EUR: "eu",
+        GBP: "gb",
+        INR: "in",
+        JPY: "jp",
+        AUD: "au",
+        CAD: "ca",
+        CHF: "ch",
+        CNY: "cn",
+        HKD: "hk",
+        SGD: "sg",
+        KRW: "kr",
+        THB: "th",
+        MYR: "my",
+        BHD: "bh",
+        QAR: "qa",
+        SAR: "sa",
+        AED: "ae",
+        DKK: "dk",
+        SEK: "se",
+        NOK: "no",
+        NZD: "nz",
+        KWD: "kw", // 🇰🇼 Kuwaiti Dinar
+        OMR: "om"  // 🇴🇲 Omani Rial
+      };
+      return map[currencyCode] || null;
+    }
+
+    fetchRates();
+    setInterval(fetchRates, 60000); // Refresh every 1 min
+  </script>
+</body>
+</html>
